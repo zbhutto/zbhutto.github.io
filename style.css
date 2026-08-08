@@ -1,0 +1,248 @@
+/* ============================================================
+   Professional theme — DAS/RF/Telecom engineering portfolio
+   Palette: steel navy + signal-blue accent, corporate/clean
+   ============================================================ */
+
+:root{
+  --bg:#f4f6f9;
+  --bg-panel:#ffffff;
+  --ink:#152238;
+  --ink-soft:#48597a;
+  --muted:#6b7a99;
+  --line:#dde3ee;
+  --navy:#0a2540;
+  --navy-deep:#071a30;
+  --accent:#1a5fb4;
+  --accent-soft:#eaf1fb;
+  --gold:#b8873a;
+  --radius:10px;
+  --shadow:0 1px 2px rgba(10,37,64,.06), 0 8px 24px -12px rgba(10,37,64,.15);
+}
+
+:root[data-theme="dark"]{
+  --bg:#0b1420;
+  --bg-panel:#101d2e;
+  --ink:#eef2f9;
+  --ink-soft:#c3cee2;
+  --muted:#8ea0c2;
+  --line:#223047;
+  --navy:#eef2f9;
+  --navy-deep:#ffffff;
+  --accent:#5b9bf0;
+  --accent-soft:#132844;
+  --gold:#d9a85c;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+}
+
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b1420;
+    --bg-panel:#101d2e;
+    --ink:#eef2f9;
+    --ink-soft:#c3cee2;
+    --muted:#8ea0c2;
+    --line:#223047;
+    --navy:#eef2f9;
+    --navy-deep:#ffffff;
+    --accent:#5b9bf0;
+    --accent-soft:#132844;
+    --gold:#d9a85c;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+  }
+}
+
+*{box-sizing:border-box}
+
+html{scroll-behavior:smooth}
+
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+
+.wrap{max-width:960px;margin:0 auto;padding:0 24px 100px}
+
+/* ---------- Header / masthead ---------- */
+header{
+  position:relative;
+  padding:64px 0 40px;
+  margin-bottom:16px;
+  border-bottom:3px solid var(--navy);
+}
+header::before{
+  content:"";
+  position:absolute;
+  top:0;left:0;right:0;
+  height:6px;
+  background:linear-gradient(90deg,var(--navy) 0%,var(--accent) 55%,var(--gold) 100%);
+  border-radius:0 0 4px 4px;
+}
+.badge{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 16px;
+  border:1px solid var(--accent);
+  border-radius:999px;
+  color:var(--accent);
+  font-size:.75rem;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  margin-bottom:18px;
+}
+.name{
+  font-size:2.6rem;
+  font-weight:800;
+  letter-spacing:-.01em;
+  margin:0 0 8px;
+  color:var(--navy);
+}
+:root[data-theme="dark"] .name{color:var(--ink)}
+@media (prefers-color-scheme: dark){ .name{color:var(--ink)} }
+.tagline{
+  color:var(--ink-soft);
+  font-size:1.08rem;
+  max-width:640px;
+  margin:0 0 20px;
+}
+.contact{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px 22px;
+  font-size:.92rem;
+}
+.contact a{
+  color:var(--accent);
+  text-decoration:none;
+  font-weight:600;
+}
+.contact a:hover{text-decoration:underline}
+.contact span{color:var(--muted)}
+
+/* ---------- Sections ---------- */
+section{margin-bottom:48px}
+h2{
+  font-size:.82rem;
+  text-transform:uppercase;
+  letter-spacing:.14em;
+  font-weight:700;
+  color:var(--navy);
+  margin:0 0 22px;
+  padding-bottom:12px;
+  border-bottom:1px solid var(--line);
+  position:relative;
+}
+h2::after{
+  content:"";
+  position:absolute;
+  left:0;bottom:-1px;
+  width:48px;height:2px;
+  background:var(--accent);
+}
+:root[data-theme="dark"] h2{color:var(--ink)}
+@media (prefers-color-scheme: dark){ h2{color:var(--ink)} }
+
+.summary{font-size:1.05rem;color:var(--ink-soft);max-width:760px}
+
+/* ---------- Competency chips ---------- */
+.chips{display:flex;flex-wrap:wrap;gap:10px}
+.chip{
+  background:var(--accent-soft);
+  border:1px solid var(--line);
+  color:var(--navy);
+  padding:8px 16px;
+  border-radius:6px;
+  font-size:.85rem;
+  font-weight:600;
+}
+:root[data-theme="dark"] .chip{color:var(--ink)}
+@media (prefers-color-scheme: dark){ .chip{color:var(--ink)} }
+
+/* ---------- Career highlights ---------- */
+.highlights{
+  list-style:none;margin:0;padding:0;
+  display:grid;grid-template-columns:1fr 1fr;gap:14px 32px;
+}
+.highlights li{
+  position:relative;padding-left:22px;
+  font-size:.95rem;color:var(--ink-soft);
+}
+.highlights li::before{
+  content:"";
+  position:absolute;left:0;top:.55em;
+  width:8px;height:8px;
+  background:var(--gold);
+  border-radius:2px;
+  transform:rotate(45deg);
+}
+@media (max-width:640px){.highlights{grid-template-columns:1fr}}
+
+/* ---------- Experience ---------- */
+.job{
+  background:var(--bg-panel);
+  border:1px solid var(--line);
+  border-left:4px solid var(--accent);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:24px 26px;
+  margin-bottom:16px;
+}
+.job-head{
+  display:flex;flex-wrap:wrap;
+  justify-content:space-between;align-items:baseline;
+  gap:8px;margin-bottom:12px;
+}
+.job-title{font-weight:700;font-size:1.08rem;color:var(--navy)}
+:root[data-theme="dark"] .job-title{color:var(--ink)}
+@media (prefers-color-scheme: dark){ .job-title{color:var(--ink)} }
+.job-company{color:var(--accent);font-weight:600}
+.job-date{
+  color:var(--muted);font-size:.82rem;font-weight:600;
+  white-space:nowrap;letter-spacing:.02em;
+}
+.job ul{margin:10px 0 0;padding-left:20px}
+.job li{margin-bottom:7px;font-size:.93rem;color:var(--ink-soft)}
+
+/* ---------- Education / certifications ---------- */
+.edu-item, .cert-item{
+  padding:12px 0;
+  border-bottom:1px solid var(--line);
+  font-size:.93rem;
+  color:var(--ink-soft);
+}
+.edu-item:last-child, .cert-item:last-child{border-bottom:none}
+.edu-item b, .cert-item b{color:var(--navy)}
+:root[data-theme="dark"] .edu-item b,
+:root[data-theme="dark"] .cert-item b{color:var(--ink)}
+@media (prefers-color-scheme: dark){
+  .edu-item b, .cert-item b{color:var(--ink)}
+}
+
+/* ---------- Notable projects ---------- */
+.projects{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:640px){.projects{grid-template-columns:1fr}}
+.proj-card{
+  background:var(--bg-panel);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:18px 20px;
+  box-shadow:var(--shadow);
+}
+.proj-card h3{
+  margin:0 0 8px;font-size:.88rem;
+  color:var(--gold);text-transform:uppercase;letter-spacing:.05em;
+}
+.proj-card p{margin:0;font-size:.87rem;color:var(--ink-soft)}
+
+/* ---------- Footer ---------- */
+footer{
+  text-align:center;color:var(--muted);font-size:.85rem;
+  margin-top:64px;padding-top:28px;border-top:1px solid var(--line);
+}
+footer a{color:var(--accent);text-decoration:none;font-weight:600}
+
