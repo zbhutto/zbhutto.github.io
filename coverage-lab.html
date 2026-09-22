@@ -1,0 +1,815 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Interactive 3D venue models with simulated 5G RSRP and SINR coverage prediction surfaces for DAS and small-cell case studies by Zafarullah Bhutto.">
+<link rel="canonical" href="https://zbhutto.github.io/coverage-lab.html">
+<title>Coverage Prediction Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+:root{
+  --bg:#F2F5F7;
+  --surface:#FFFFFF;
+  --surface-2:#E9EEF1;
+  --ink:#101820;
+  --muted:#5B6B78;
+  --line:#DCE3E8;
+  --accent:#0E9E98;
+  --accent-ink:#075F5B;
+  --accent-2:#C97A1A;
+  --good:#2E8F5B;
+  --warn:#C97A1A;
+  --bad:#C6394D;
+  --shadow: 0 1px 2px rgba(16,24,32,.06), 0 8px 24px rgba(16,24,32,.08);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0A1420;
+    --surface:#101C2B;
+    --surface-2:#16283A;
+    --ink:#E7EEF3;
+    --muted:#93A6B5;
+    --line:#213244;
+    --accent:#2DD8CF;
+    --accent-ink:#8FF2EC;
+    --accent-2:#F0B15C;
+    --good:#4FC988;
+    --warn:#F0B15C;
+    --bad:#F0687E;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 32px rgba(0,0,0,.45);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0A1420;
+  --surface:#101C2B;
+  --surface-2:#16283A;
+  --ink:#E7EEF3;
+  --muted:#93A6B5;
+  --line:#213244;
+  --accent:#2DD8CF;
+  --accent-ink:#8FF2EC;
+  --accent-2:#F0B15C;
+  --good:#4FC988;
+  --warn:#F0B15C;
+  --bad:#F0687E;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 32px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box;}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:'IBM Plex Sans',system-ui,sans-serif;
+  padding:20px 16px 28px;
+}
+.wrap{max-width:1180px;margin:0 auto;}
+h1,h2,h3{font-family:'Space Grotesk',system-ui,sans-serif;margin:0;}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace;}
+
+header.top{
+  display:flex; flex-wrap:wrap; gap:14px 24px; align-items:flex-end; justify-content:space-between;
+  margin-bottom:18px; padding-bottom:16px; border-bottom:1px solid var(--line);
+}
+.eyebrow{
+  font-family:'IBM Plex Mono',monospace; font-size:11.5px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--accent-ink); margin:0 0 6px;
+}
+h1{font-size:26px; font-weight:700; letter-spacing:-.01em;}
+.sub{color:var(--muted); font-size:13.5px; margin-top:6px; max-width:52ch; line-height:1.5;}
+.badge{
+  display:inline-flex; align-items:center; gap:7px; font-size:11.5px; color:var(--muted);
+  background:var(--surface-2); border:1px solid var(--line); border-radius:99px; padding:6px 12px 6px 10px;
+  white-space:nowrap;
+}
+.badge .dot{width:6px;height:6px;border-radius:50%;background:var(--warn);flex:none;}
+
+.layout{
+  display:grid;
+  grid-template-columns:190px minmax(0,1fr) 240px;
+  gap:16px;
+  align-items:start;
+}
+@media (max-width:920px){
+  .layout{grid-template-columns:1fr;}
+  .venues{
+    display:flex; overflow-x:auto; gap:8px; padding-bottom:4px;
+  }
+  .venues button{flex:none; min-width:150px;}
+}
+
+.panel{
+  background:var(--surface); border:1px solid var(--line); border-radius:14px;
+  box-shadow:var(--shadow);
+}
+
+.venues{display:flex; flex-direction:column; gap:8px;}
+.venues button{
+  text-align:left; padding:11px 12px; border-radius:11px; border:1px solid var(--line);
+  background:var(--surface); color:var(--ink); cursor:pointer; font-family:inherit;
+  transition:border-color .15s, background .15s;
+}
+.venues button:hover{border-color:var(--accent);}
+.venues button.active{
+  background:var(--surface-2); border-color:var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.venues button .vname{font-weight:600; font-size:13.5px; display:block;}
+.venues button .vtype{
+  font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--muted);
+  text-transform:uppercase; letter-spacing:.06em; display:block; margin-top:3px;
+}
+
+.stage{
+  position:relative; overflow:hidden; min-height:420px; aspect-ratio:4/3.1;
+}
+.stage canvas{display:block; width:100%; height:100%; cursor:grab; touch-action:none;}
+.stage canvas:active{cursor:grabbing;}
+
+.stage-controls{
+  position:absolute; top:12px; right:12px; z-index:3;
+  display:flex; gap:6px; background:rgba(16,24,32,.55); backdrop-filter:blur(6px);
+  padding:5px; border-radius:10px; border:1px solid rgba(255,255,255,.12);
+}
+:root[data-theme="light"] .stage-controls, :root:not([data-theme="dark"]):not([data-theme="light"]) .stage-controls{}
+.stage-controls button{
+  font-family:'IBM Plex Mono',monospace; font-size:11.5px; font-weight:500; letter-spacing:.03em;
+  padding:7px 11px; border-radius:7px; border:none; background:transparent; color:#EAF4F3; cursor:pointer;
+}
+.stage-controls button.active{background:var(--accent); color:#062522;}
+.stage-controls button.reset{color:#B9C8CE;}
+
+.stage-title{
+  position:absolute; top:12px; left:14px; z-index:3; color:#EAF4F3;
+  font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15px;
+  text-shadow:0 2px 10px rgba(0,0,0,.5);
+}
+.stage-title small{
+  display:block; font-family:'IBM Plex Mono',monospace; font-weight:400; font-size:10.5px;
+  color:#B9C8CE; letter-spacing:.04em; margin-top:2px; text-transform:none;
+}
+
+.legend{
+  position:absolute; left:14px; bottom:14px; z-index:3; width:min(280px,64%);
+  background:rgba(16,24,32,.6); backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,.12);
+  border-radius:10px; padding:10px 12px;
+}
+.legend .lname{font-size:11px; color:#EAF4F3; font-weight:600; margin-bottom:6px; font-family:'IBM Plex Mono',monospace; letter-spacing:.04em;}
+.legend .bar{height:8px; border-radius:99px; margin-bottom:5px;}
+.legend .ticks{display:flex; justify-content:space-between; font-family:'IBM Plex Mono',monospace; font-size:9.5px; color:#C7D4D8;}
+
+.spec{padding:16px; display:flex; flex-direction:column; gap:14px;}
+.spec h3{font-size:14px;}
+.spec .row{display:flex; justify-content:space-between; gap:10px; font-size:12.5px; padding:7px 0; border-bottom:1px dashed var(--line);}
+.spec .row:last-child{border-bottom:none;}
+.spec .row .k{color:var(--muted);}
+.spec .row .v{font-family:'IBM Plex Mono',monospace; text-align:right; font-weight:500;}
+.stat-tiles{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+.tile{background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:10px;}
+.tile .tk{font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); font-family:'IBM Plex Mono',monospace;}
+.tile .tv{font-family:'IBM Plex Mono',monospace; font-size:19px; font-weight:600; margin-top:3px;}
+.tile .tv.good{color:var(--good);}
+.tile .tv.warn{color:var(--warn);}
+.pill{
+  display:inline-block; font-family:'IBM Plex Mono',monospace; font-size:10px; padding:3px 8px;
+  border-radius:99px; background:var(--surface-2); border:1px solid var(--line); color:var(--muted);
+}
+
+footer{margin-top:18px; color:var(--muted); font-size:11.5px; text-align:center; line-height:1.6;}
+footer a{color:var(--accent-ink);}
+
+@media (prefers-reduced-motion: reduce){
+  .venues button{transition:none;}
+}
+</style>
+<style>html,body{margin:0}body{min-height:100vh}.back{display:inline-block;margin-bottom:14px;font-size:12.5px;color:var(--accent-ink);text-decoration:none;font-weight:600}.back:hover{text-decoration:underline}</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <a class="back" href="https://zbhutto.github.io/">&larr; Back to portfolio</a>
+  <header class="top">
+    <div>
+      <p class="eyebrow">DAS &middot; Small Cell &middot; 5G NR</p>
+      <h1>Coverage Prediction Lab</h1>
+      <p class="sub">Parametric 3D venue models with simulated RSRP &amp; SINR coverage surfaces, built from antenna placement and a log-distance propagation estimate &mdash; the same shape of output an iBwave or Atoll prediction plot shows.</p>
+    </div>
+    <span class="badge"><span class="dot"></span>Illustrative concept model &mdash; not measured RF data</span>
+  </header>
+
+  <div class="layout">
+    <nav class="venues" id="venueList"></nav>
+
+    <div class="panel stage" id="stage">
+      <div class="stage-title" id="stageTitle">&nbsp;</div>
+      <div class="stage-controls">
+        <button id="btnRsrp" class="active">RSRP</button>
+        <button id="btnSinr">SINR</button>
+        <button id="btnReset" class="reset" title="Reset view">⟳</button>
+      </div>
+      <div class="legend">
+        <div class="lname" id="legendName">RSRP &middot; dBm</div>
+        <div class="bar" id="legendBar"></div>
+        <div class="ticks" id="legendTicks"></div>
+      </div>
+    </div>
+
+    <aside class="panel spec" id="specPanel"></aside>
+  </div>
+
+  <footer>
+    Antenna layouts, RSRP and SINR values are procedurally generated for visualization purposes and do not represent surveyed or as-built performance.<br>
+    Portfolio piece &middot; Zafarullah Bhutto, Sr. DAS/RF Engineer &middot; <a href="https://zbhutto.github.io/">zbhutto.github.io</a>
+  </footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- color ramps ---------- */
+var RSRP_STOPS = [
+  {val:-115, c:[0xC6,0x39,0x4D]},
+  {val:-105, c:[0xE0,0x7A,0x3E]},
+  {val:-95,  c:[0xE3,0xB8,0x3C]},
+  {val:-85,  c:[0x4F,0xB4,0x77]},
+  {val:-65,  c:[0x18,0xA6,0x9E]}
+];
+var SINR_STOPS = [
+  {val:-5,  c:[0xC6,0x39,0x4D]},
+  {val:3,   c:[0xE0,0x7A,0x3E]},
+  {val:10,  c:[0xE3,0xB8,0x3C]},
+  {val:16,  c:[0x4E,0x8F,0xD9]},
+  {val:24,  c:[0x7B,0x5F,0xE0]}
+];
+
+function lerp(a,b,t){return a+(b-a)*t;}
+function colorForValue(v, stops){
+  if(v<=stops[0].val) return stops[0].c;
+  for(var i=0;i<stops.length-1;i++){
+    var s0=stops[i], s1=stops[i+1];
+    if(v>=s0.val && v<=s1.val){
+      var t=(v-s0.val)/(s1.val-s0.val);
+      return [
+        Math.round(lerp(s0.c[0],s1.c[0],t)),
+        Math.round(lerp(s0.c[1],s1.c[1],t)),
+        Math.round(lerp(s0.c[2],s1.c[2],t))
+      ];
+    }
+  }
+  return stops[stops.length-1].c;
+}
+function stopsToGradient(stops){
+  var min=stops[0].val, max=stops[stops.length-1].val, span=max-min;
+  var parts=stops.map(function(s){
+    var pct=((s.val-min)/span*100).toFixed(1);
+    var hex='#'+s.c.map(function(x){return x.toString(16).padStart(2,'0');}).join('');
+    return hex+' '+pct+'%';
+  });
+  return 'linear-gradient(to right,'+parts.join(',')+')';
+}
+
+/* ---------- propagation model ---------- */
+var NOISE_FLOOR_DBM = -100;
+var ISOLATION_DB = 9;
+function dbmToLin(dbm){ return Math.pow(10, dbm/10); }
+function pathLossDb(d){ return 32 + 34*Math.log10(Math.max(d,1)); }
+
+function computeGrid(footprint, antennas, res){
+  var xs=[], zs=[], rsrp=[], sinr=[];
+  var bb=footprint.bbox;
+  var nx=res.nx, nz=res.nz;
+  for(var iz=0; iz<nz; iz++){
+    for(var ix=0; ix<nx; ix++){
+      var x = lerp(bb.xMin, bb.xMax, ix/(nx-1));
+      var z = lerp(bb.zMin, bb.zMax, iz/(nz-1));
+      var inside = footprint.contains(x,z);
+      var rVal=null, sVal=null;
+      if(inside){
+        var powers=[];
+        for(var a=0;a<antennas.length;a++){
+          var an=antennas[a];
+          var dx=x-an.x, dz=z-an.z, dh=(an.h-1.5);
+          var d=Math.sqrt(dx*dx+dz*dz+dh*dh);
+          var rx = an.ptx - pathLossDb(d);
+          powers.push(rx);
+        }
+        powers.sort(function(a,b){return b-a;});
+        rVal = Math.max(-118, Math.min(-55, powers[0]));
+        var sigLin = dbmToLin(powers[0]);
+        var interfLin = 0;
+        for(var k=1;k<powers.length;k++) interfLin += dbmToLin(powers[k] - ISOLATION_DB);
+        interfLin += dbmToLin(NOISE_FLOOR_DBM);
+        sVal = 10*Math.log10(sigLin/interfLin);
+        sVal = Math.max(-5, Math.min(28, sVal));
+      }
+      xs.push(x); zs.push(z); rsrp.push(rVal); sinr.push(sVal);
+    }
+  }
+  return {xs:xs, zs:zs, rsrp:rsrp, sinr:sinr, nx:nx, nz:nz};
+}
+
+/* ---------- footprint helpers ---------- */
+function circleFootprint(r){
+  return {
+    bbox:{xMin:-r,xMax:r,zMin:-r,zMax:r},
+    contains:function(x,z){ return (x*x+z*z) <= r*r; }
+  };
+}
+function ellipseFootprint(rx,rz){
+  return {
+    bbox:{xMin:-rx,xMax:rx,zMin:-rz,zMax:rz},
+    contains:function(x,z){ return (x*x)/(rx*rx)+(z*z)/(rz*rz) <= 1; }
+  };
+}
+function rectContains(x,z,r){ return x>=r.xMin && x<=r.xMax && z>=r.zMin && z<=r.zMax; }
+function unionFootprint(rects){
+  var xMin=Infinity,xMax=-Infinity,zMin=Infinity,zMax=-Infinity;
+  rects.forEach(function(r){ xMin=Math.min(xMin,r.xMin); xMax=Math.max(xMax,r.xMax); zMin=Math.min(zMin,r.zMin); zMax=Math.max(zMax,r.zMax); });
+  return {
+    bbox:{xMin:xMin,xMax:xMax,zMin:zMin,zMax:zMax},
+    contains:function(x,z){ for(var i=0;i<rects.length;i++) if(rectContains(x,z,rects[i])) return true; return false; }
+  };
+}
+function fanFootprint(r, halfAngle){
+  return {
+    bbox:{xMin:-r,xMax:r,zMin:-r*0.15,zMax:r},
+    contains:function(x,z){
+      if(z < -r*0.15) return false;
+      var dist=Math.sqrt(x*x+z*z);
+      if(dist>r) return false;
+      var ang=Math.atan2(x,z+0.0001);
+      return Math.abs(ang) <= halfAngle;
+    }
+  };
+}
+
+/* ---------- structure builders ---------- */
+var steelColor = 0x8CA0AC;
+function lineMat(){ return new THREE.LineBasicMaterial({color:steelColor, transparent:true, opacity:.55}); }
+function ringWire(radius, y, segs){
+  var pts=[];
+  for(var i=0;i<=segs;i++){ var a=i/segs*Math.PI*2; pts.push(new THREE.Vector3(Math.cos(a)*radius,y,Math.sin(a)*radius)); }
+  var geo=new THREE.BufferGeometry().setFromPoints(pts);
+  return new THREE.Line(geo,lineMat());
+}
+function arcWire(radius, y, halfAngle, segs){
+  var pts=[];
+  for(var i=0;i<=segs;i++){ var a=-halfAngle + (i/segs)*halfAngle*2; pts.push(new THREE.Vector3(Math.sin(a)*radius,y,Math.cos(a)*radius)); }
+  var geo=new THREE.BufferGeometry().setFromPoints(pts);
+  return new THREE.Line(geo,lineMat());
+}
+function vertLine(x,y0,y1,z){
+  var geo=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x,y0,z), new THREE.Vector3(x,y1,z)]);
+  return new THREE.Line(geo,lineMat());
+}
+function boxWire(w,h,d,cx,cy,cz){
+  var geo=new THREE.EdgesGeometry(new THREE.BoxGeometry(w,h,d));
+  var line=new THREE.LineSegments(geo,lineMat());
+  line.position.set(cx,cy,cz);
+  return line;
+}
+
+function bowlStructure(group, r, tiers){
+  for(var t=0;t<tiers;t++){
+    var rr = r*(0.62 + t*0.19);
+    var yy = 2 + t*4.2;
+    group.add(ringWire(rr,yy,64));
+    var posts=16;
+    for(var i=0;i<posts;i++){
+      var a=i/posts*Math.PI*2;
+      var rr0 = r*(0.62 + Math.max(0,t-1)*0.19);
+      var y0 = t===0 ? 0 : 2 + (t-1)*4.2;
+      group.add(vertLine(Math.cos(a)*rr, y0, yy, Math.sin(a)*rr));
+    }
+  }
+  var roofR = r*1.05;
+  var roof = ringWire(roofR, 2+tiers*4.2+3, 64);
+  group.add(roof);
+  var roofSpokes=12;
+  for(var i=0;i<roofSpokes;i++){
+    var a=i/roofSpokes*Math.PI*2;
+    var geo=new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0,2+tiers*4.2+3,0),
+      new THREE.Vector3(Math.cos(a)*roofR,2+tiers*4.2+3,Math.sin(a)*roofR)
+    ]);
+    group.add(new THREE.Line(geo,lineMat()));
+  }
+}
+
+function domeStructure(group, rx, rz, apex){
+  var geo=new THREE.SphereGeometry(1,24,14,0,Math.PI*2,0,Math.PI/2);
+  geo.scale(rx*1.02, apex, rz*1.02);
+  var wire=new THREE.LineSegments(new THREE.EdgesGeometry(geo,25), lineMat());
+  wire.position.y = 14;
+  group.add(wire);
+}
+
+function airportStructure(group, spine, piers){
+  group.add(boxWire(spine.xMax-spine.xMin, 8, spine.zMax-spine.zMin, (spine.xMax+spine.xMin)/2, 4, (spine.zMax+spine.zMin)/2));
+  piers.forEach(function(p){
+    group.add(boxWire(p.xMax-p.xMin, 6, p.zMax-p.zMin, (p.xMax+p.xMin)/2, 3, (p.zMax+p.zMin)/2));
+  });
+}
+
+function amphiStructure(group, lawnR, canopyR, halfAngle){
+  var tiers=3;
+  for(var t=0;t<tiers;t++){
+    arcWire(canopyR*(0.55+t*0.22), 1.5+t*2.4, halfAngle, 40);
+    group.add(arcWire(canopyR*(0.55+t*0.22), 1.5+t*2.4, halfAngle, 40));
+  }
+  group.add(boxWire(canopyR*1.5, 9, canopyR*0.9, 0, 4.5, canopyR*0.55));
+  group.add(ringWire(lawnR, 0.05, 72));
+  group.add(boxWire(14,3,6,0,1.5,-lawnR*0.02));
+}
+
+/* ---------- venues ---------- */
+var VENUES = [
+  {
+    key:'skc', name:'Smoothie King Center', type:'NBA Arena · Bowl DAS',
+    location:'New Orleans, LA', capacity:'~18,500 seats',
+    band:'n71 / n41 neutral host', antennaCount:6,
+    footprint:function(){ return circleFootprint(55); },
+    antennas:function(){
+      var list=[]; var n=6, r=38;
+      for(var i=0;i<n;i++){ var a=i/n*Math.PI*2; list.push({x:Math.cos(a)*r, z:Math.sin(a)*r, h:16, ptx:10}); }
+      list.push({x:0,z:0,h:22,ptx:8});
+      return list;
+    },
+    camera:{r:150, y:80},
+    structure:function(group){ bowlStructure(group,55,3); }
+  },
+  {
+    key:'aus', name:'Austin–Bergstrom Intl.', type:'Airport Terminal · Passive DAS',
+    location:'Austin, TX', capacity:'~15M pax / yr',
+    band:'700 MHz Public Safety + n77', antennaCount:7,
+    footprint:function(){
+      return unionFootprint([
+        {xMin:-70,xMax:70,zMin:-16,zMax:16},
+        {xMin:-14,xMax:14,zMin:-70,zMax:-16},
+        {xMin:-14,xMax:14,zMin:16,zMax:70}
+      ]);
+    },
+    antennas:function(){
+      return [
+        {x:-52,z:0,h:9,ptx:6},{x:-24,z:0,h:9,ptx:6},{x:0,z:0,h:9,ptx:6},
+        {x:24,z:0,h:9,ptx:6},{x:52,z:0,h:9,ptx:6},
+        {x:0,z:-48,h:9,ptx:6},{x:0,z:48,h:9,ptx:6}
+      ];
+    },
+    camera:{r:170, y:95},
+    structure:function(group){
+      airportStructure(group,
+        {xMin:-70,xMax:70,zMin:-16,zMax:16},
+        [{xMin:-14,xMax:14,zMin:-70,zMax:-16},{xMin:-14,xMax:14,zMin:16,zMax:70}]
+      );
+    }
+  },
+  {
+    key:'nrg', name:'NRG Stadium', type:'NFL Stadium · Neutral Host',
+    location:'Houston, TX', capacity:'~72,200 seats',
+    band:'n77 / n41 / Public Safety', antennaCount:8,
+    footprint:function(){ return ellipseFootprint(95,78); },
+    antennas:function(){
+      var list=[]; var n=8;
+      for(var i=0;i<n;i++){
+        var a=i/n*Math.PI*2;
+        var r = (i%2===0)? 55 : 78;
+        list.push({x:Math.cos(a)*r*95/95, z:Math.sin(a)*r*78/95, h: (i%2===0)?18:30, ptx:12});
+      }
+      return list;
+    },
+    camera:{r:230, y:120},
+    structure:function(group){ bowlStructure(group,88,3); domeStructure(group,95,78,36); }
+  },
+  {
+    key:'sba', name:'Simmons Bank Arena', type:'Multi-Purpose Arena · Bowl DAS',
+    location:'North Little Rock, AR', capacity:'~18,000 seats',
+    band:'n71 / n41 neutral host', antennaCount:5,
+    footprint:function(){ return circleFootprint(46); },
+    antennas:function(){
+      var list=[]; var n=5, r=30;
+      for(var i=0;i<n;i++){ var a=i/n*Math.PI*2; list.push({x:Math.cos(a)*r, z:Math.sin(a)*r, h:14, ptx:9}); }
+      return list;
+    },
+    camera:{r:130, y:70},
+    structure:function(group){ bowlStructure(group,46,3); }
+  },
+  {
+    key:'mpa', name:'Music Pavilion Amphitheater', type:'Outdoor Amphitheater · Off-Air + Poles',
+    location:'Regional Venue', capacity:'~19,000 (lawn + pavilion)',
+    band:'n77 macro-supplemented', antennaCount:5,
+    footprint:function(){ return fanFootprint(78, Math.PI/2.7); },
+    antennas:function(){
+      return [
+        {x:-16,z:16,h:11,ptx:8},{x:16,z:16,h:11,ptx:8},
+        {x:-42,z:52,h:20,ptx:9},{x:42,z:52,h:20,ptx:9},
+        {x:0,z:70,h:22,ptx:9}
+      ];
+    },
+    camera:{r:190, y:110}, yaw:0.06, pitch:0.3,
+    structure:function(group){ amphiStructure(group,78,34,Math.PI/2.7); }
+  }
+];
+
+/* ---------- three.js scene ---------- */
+var stageEl = document.getElementById('stage');
+var renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+stageEl.appendChild(renderer.domElement);
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(42, 1, 1, 2000);
+
+var hemi = new THREE.HemisphereLight(0xdfeff0, 0x0a1420, 1.05);
+scene.add(hemi);
+var dir = new THREE.DirectionalLight(0xffffff, 0.65);
+dir.position.set(120,180,80);
+scene.add(dir);
+
+var rig = new THREE.Group();
+scene.add(rig);
+var venueGroup = new THREE.Group();
+rig.add(venueGroup);
+
+var yaw = Math.PI*0.22, pitch = 0.62, camDist = 150;
+var targetYaw = yaw, targetPitch = pitch, targetDist = camDist;
+
+function sizeRenderer(){
+  var w = stageEl.clientWidth, h = stageEl.clientHeight;
+  renderer.setSize(w,h,false);
+  camera.aspect = w/Math.max(h,1);
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(sizeRenderer).observe(stageEl);
+
+function updateCamera(){
+  var cp = Math.max(0.18, Math.min(1.5, pitch));
+  var x = camDist*Math.sin(cp)*Math.sin(yaw);
+  var z = camDist*Math.sin(cp)*Math.cos(yaw);
+  var y = camDist*Math.cos(cp);
+  camera.position.set(x,y,z);
+  camera.lookAt(0, 14, 0);
+}
+
+/* drag / wheel controls */
+var dragging=false, lastX=0, lastY=0, idle=0;
+var dom = renderer.domElement;
+function pointerDown(e){ dragging=true; lastX=(e.touches?e.touches[0].clientX:e.clientX); lastY=(e.touches?e.touches[0].clientY:e.clientY); idle=0; }
+function pointerMove(e){
+  if(!dragging) return;
+  var x=(e.touches?e.touches[0].clientX:e.clientX), y=(e.touches?e.touches[0].clientY:e.clientY);
+  var dx=x-lastX, dy=y-lastY; lastX=x; lastY=y;
+  targetYaw -= dx*0.006;
+  targetPitch = Math.max(0.28, Math.min(1.3, targetPitch - dy*0.005));
+  idle=0;
+}
+function pointerUp(){ dragging=false; }
+dom.addEventListener('mousedown', pointerDown);
+window.addEventListener('mousemove', pointerMove);
+window.addEventListener('mouseup', pointerUp);
+dom.addEventListener('touchstart', pointerDown, {passive:true});
+dom.addEventListener('touchmove', pointerMove, {passive:true});
+dom.addEventListener('touchend', pointerUp);
+dom.addEventListener('wheel', function(e){
+  e.preventDefault();
+  targetDist = Math.max(60, Math.min(420, targetDist + e.deltaY*0.25));
+  idle=0;
+}, {passive:false});
+
+/* ---------- build / recolor ---------- */
+var currentVenue = null;
+var currentGridData = null;
+var metric = 'rsrp';
+
+function disposeGroup(g){
+  while(g.children.length){
+    var c=g.children.pop();
+    if(c.geometry) c.geometry.dispose();
+    if(c.material) c.material.dispose();
+  }
+}
+
+function buildCoverageMesh(grid, metric){
+  var nx=grid.nx, nz=grid.nz;
+  var positions=[], colors=[], indices=[];
+  var stops = metric==='rsrp'? RSRP_STOPS : SINR_STOPS;
+  var vals = metric==='rsrp'? grid.rsrp : grid.sinr;
+  for(var i=0;i<grid.xs.length;i++){
+    positions.push(grid.xs[i], 0.3, grid.zs[i]);
+    var v=vals[i];
+    if(v===null){ colors.push(0,0,0); }
+    else{
+      var c=colorForValue(v,stops);
+      colors.push(c[0]/255,c[1]/255,c[2]/255);
+    }
+  }
+  for(var iz=0; iz<nz-1; iz++){
+    for(var ix=0; ix<nx-1; ix++){
+      var a=iz*nx+ix, b=a+1, c2=a+nx, d=c2+1;
+      var va=vals[a],vb=vals[b],vc=vals[c2],vd=vals[d];
+      if(va!==null&&vb!==null&&vc!==null){ indices.push(a,c2,b); }
+      if(vb!==null&&vc!==null&&vd!==null){ indices.push(b,c2,d); }
+    }
+  }
+  var geo=new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions,3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors,3));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+  var mat=new THREE.MeshBasicMaterial({vertexColors:true, transparent:true, opacity:0.94, side:THREE.DoubleSide});
+  return new THREE.Mesh(geo,mat);
+}
+
+function antennaMarker(an){
+  var g=new THREE.Group();
+  var poleGeo=new THREE.CylinderGeometry(0.35,0.35,an.h,8);
+  var poleMat=new THREE.MeshBasicMaterial({color:0x33454f});
+  var pole=new THREE.Mesh(poleGeo,poleMat);
+  pole.position.set(an.x, an.h/2, an.z);
+  g.add(pole);
+  var nodeGeo=new THREE.SphereGeometry(1.6,12,10);
+  var nodeMat=new THREE.MeshBasicMaterial({color:0x0E9E98});
+  var node=new THREE.Mesh(nodeGeo,nodeMat);
+  node.position.set(an.x, an.h+1.2, an.z);
+  g.add(node);
+  var ringGeo=new THREE.RingGeometry(2.4,3.1,24);
+  var ringMat=new THREE.MeshBasicMaterial({color:0x0E9E98, transparent:true, opacity:0.5, side:THREE.DoubleSide});
+  var ring=new THREE.Mesh(ringGeo,ringMat);
+  ring.rotation.x=-Math.PI/2;
+  ring.position.set(an.x, an.h+1.25, an.z);
+  g.add(ring);
+  return g;
+}
+
+function computeStats(grid){
+  function stat(vals, target){
+    var sum=0,n=0,hit=0;
+    for(var i=0;i<vals.length;i++){
+      var v=vals[i];
+      if(v===null) continue;
+      sum+=v; n++;
+      if(v>=target) hit++;
+    }
+    return { avg: n? sum/n : 0, pct: n? (hit/n*100) : 0, n:n };
+  }
+  return {
+    rsrp: stat(grid.rsrp, -95),
+    sinr: stat(grid.sinr, 13)
+  };
+}
+
+function renderSpec(venue, stats, areaLabel){
+  var el=document.getElementById('specPanel');
+  el.innerHTML =
+    '<div>'+
+      '<h3>'+venue.name+'</h3>'+
+      '<p class="pill" style="margin-top:8px;">'+venue.type+'</p>'+
+    '</div>'+
+    '<div>'+
+      '<div class="row"><span class="k">Location</span><span class="v">'+venue.location+'</span></div>'+
+      '<div class="row"><span class="k">Capacity</span><span class="v">'+venue.capacity+'</span></div>'+
+      '<div class="row"><span class="k">Modeled area</span><span class="v">'+areaLabel+'</span></div>'+
+      '<div class="row"><span class="k">DAS band</span><span class="v">'+venue.band+'</span></div>'+
+      '<div class="row"><span class="k">Antenna nodes</span><span class="v">'+venue.antennaCount+'</span></div>'+
+    '</div>'+
+    '<div class="stat-tiles">'+
+      '<div class="tile"><div class="tk">Avg RSRP</div><div class="tv">'+stats.rsrp.avg.toFixed(1)+' dBm</div></div>'+
+      '<div class="tile"><div class="tk">Avg SINR</div><div class="tv">'+stats.sinr.avg.toFixed(1)+' dB</div></div>'+
+      '<div class="tile"><div class="tk">≥–95 dBm</div><div class="tv '+(stats.rsrp.pct>=95?'good':'warn')+'">'+stats.rsrp.pct.toFixed(0)+'%</div></div>'+
+      '<div class="tile"><div class="tk">≥ 13 dB</div><div class="tv '+(stats.sinr.pct>=90?'good':'warn')+'">'+stats.sinr.pct.toFixed(0)+'%</div></div>'+
+    '</div>'+
+    '<div class="row" style="border-top:1px solid var(--line); padding-top:10px;"><span class="k">Coverage target</span><span class="v" style="text-align:right;">−95&nbsp;dBm / 95%<br>13&nbsp;dB SINR / 90%</span></div>';
+}
+
+function updateLegend(){
+  var stops = metric==='rsrp'? RSRP_STOPS : SINR_STOPS;
+  document.getElementById('legendName').textContent = metric==='rsrp' ? 'RSRP · dBm' : 'SINR · dB';
+  document.getElementById('legendBar').style.background = stopsToGradient(stops);
+  var ticks = stops.map(function(s){ return s.val; });
+  document.getElementById('legendTicks').innerHTML = ticks.map(function(t){ return '<span>'+t+'</span>'; }).join('');
+}
+
+function loadVenue(idx){
+  currentVenue = VENUES[idx];
+  idle = 0;
+  document.querySelectorAll('#venueList button').forEach(function(b,i){ b.classList.toggle('active', i===idx); });
+  document.getElementById('stageTitle').innerHTML = currentVenue.name + '<small>'+currentVenue.location+'</small>';
+
+  disposeGroup(venueGroup);
+
+  var footprint = currentVenue.footprint();
+  var antennas = currentVenue.antennas();
+  var res = { nx: 56, nz: 44 };
+  var span = footprint.bbox.xMax-footprint.bbox.xMin;
+  var spanZ = footprint.bbox.zMax-footprint.bbox.zMin;
+  res.nz = Math.max(24, Math.round(res.nx * (spanZ/span)));
+
+  currentGridData = computeGrid(footprint, antennas, res);
+
+  var validCount = currentGridData.rsrp.filter(function(v){ return v!==null; }).length;
+  var cellArea = (span/(res.nx-1)) * (spanZ/(res.nz-1));
+  var areaM2 = validCount * cellArea;
+  var areaLabel = areaM2>=10000
+    ? (areaM2/10000).toFixed(2)+' ha modeled floor'
+    : Math.round(areaM2).toLocaleString()+' m² modeled floor';
+
+  var mesh = buildCoverageMesh(currentGridData, metric);
+  venueGroup.add(mesh);
+
+  currentVenue.structure(venueGroup);
+
+  antennas.forEach(function(an){ venueGroup.add(antennaMarker(an)); });
+
+  var fitR = Math.max(span,spanZ)*0.5;
+  targetDist = Math.max(90, fitR*2.1);
+  camDist = targetDist;
+  targetYaw = (currentVenue.yaw!==undefined) ? currentVenue.yaw : Math.PI*0.22;
+  targetPitch = (currentVenue.pitch!==undefined) ? currentVenue.pitch : 0.62;
+
+  currentVenue._areaLabel = areaLabel;
+  renderSpec(currentVenue, computeStats(currentGridData), areaLabel);
+  updateLegend();
+}
+
+function recolor(){
+  if(!currentGridData) return;
+  venueGroup.children.forEach(function(child){
+    if(child.geometry && child.geometry.attributes && child.geometry.attributes.color && child.geometry.index){
+      var stops = metric==='rsrp'? RSRP_STOPS : SINR_STOPS;
+      var vals = metric==='rsrp'? currentGridData.rsrp : currentGridData.sinr;
+      var colAttr = child.geometry.attributes.color;
+      for(var i=0;i<vals.length;i++){
+        var v=vals[i];
+        if(v===null){ colAttr.setXYZ(i,0,0,0); continue; }
+        var c=colorForValue(v,stops);
+        colAttr.setXYZ(i, c[0]/255, c[1]/255, c[2]/255);
+      }
+      colAttr.needsUpdate = true;
+    }
+  });
+  updateLegend();
+  if(currentVenue) renderSpec(currentVenue, computeStats(currentGridData), currentVenue._areaLabel);
+}
+
+/* ---------- UI wiring ---------- */
+var listEl = document.getElementById('venueList');
+VENUES.forEach(function(v,i){
+  var btn=document.createElement('button');
+  btn.innerHTML = '<span class="vname">'+v.name+'</span><span class="vtype">'+v.type+'</span>';
+  btn.addEventListener('click', function(){ loadVenue(i); });
+  listEl.appendChild(btn);
+});
+
+document.getElementById('btnRsrp').addEventListener('click', function(){
+  metric='rsrp';
+  this.classList.add('active');
+  document.getElementById('btnSinr').classList.remove('active');
+  recolor();
+});
+document.getElementById('btnSinr').addEventListener('click', function(){
+  metric='sinr';
+  this.classList.add('active');
+  document.getElementById('btnRsrp').classList.remove('active');
+  recolor();
+});
+document.getElementById('btnReset').addEventListener('click', function(){
+  idle = 0;
+  if(currentVenue){
+    targetYaw = (currentVenue.yaw!==undefined) ? currentVenue.yaw : Math.PI*0.22;
+    targetPitch = (currentVenue.pitch!==undefined) ? currentVenue.pitch : 0.62;
+    var fp = currentVenue.footprint();
+    var span=fp.bbox.xMax-fp.bbox.xMin, spanZ=fp.bbox.zMax-fp.bbox.zMin;
+    targetDist = Math.max(90, Math.max(span,spanZ)*1.05);
+  }
+});
+
+/* ---------- animation loop ---------- */
+function tick(){
+  requestAnimationFrame(tick);
+  if(!dragging && !reduceMotion){
+    idle += 1;
+    if(idle>90) targetYaw += 0.0016;
+  }
+  yaw += (targetYaw-yaw)*0.09;
+  pitch += (targetPitch-pitch)*0.12;
+  camDist += (targetDist-camDist)*0.12;
+  updateCamera();
+  renderer.render(scene,camera);
+}
+
+sizeRenderer();
+loadVenue(0);
+updateCamera();
+tick();
+window.addEventListener('resize', sizeRenderer);
+})();
+</script>
+
+</body>
+</html>
